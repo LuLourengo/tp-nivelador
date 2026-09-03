@@ -1,0 +1,13 @@
+client_0  | 2026/09/03 01:04:07 INFO action=connect-to-server result=in-progress
+client_0  | 2026/09/03 01:04:07 WARN action=connect-to-server result=fail attempt=0
+client_0  | 2026/09/03 01:04:08 WARN action=connect-to-server result=fail attempt=1
+client_0  | 2026/09/03 01:04:08 WARN action=connect-to-server result=fail attempt=2
+client_1  | 2026/09/03 01:04:07 INFO action=connect-to-server result=in-progress
+client_1  | 2026/09/03 01:04:07 WARN action=connect-to-server result=fail attempt=0
+client_1  | 2026/09/03 01:04:08 WARN action=connect-to-server result=fail attempt=1
+client_1  | 2026/09/03 01:04:08 WARN action=connect-to-server result=fail attempt=2
+client_1  | 2026/09/03 01:04:08 WARN action=connect-to-server result=fail
+client_1  | 2026/09/03 01:04:08 ERROR action=client-new result=fail err="dial tcp 172.18.0.2:5678: connect: connection refused"
+client_0  | 2026/09/03 01:04:08 WARN action=connect-to-server result=fail
+client_0  | 2026/09/03 01:04:08 ERROR action=client-new result=fail err="dial tcp 172.18.0.2:5678: connect: connection refused"
+server    | 2026/09/03 01:04:08 INFO action=accept-connection result=in-progress 

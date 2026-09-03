@@ -4,14 +4,19 @@ import (
 	"net"
 	"time"
 
+	"bufio"
+	"os"
+
 	"github.com/7574-sistemas-distribuidos/tp-nivelador/src/logger"
 	"github.com/7574-sistemas-distribuidos/tp-nivelador/src/safe_socket"
 )
 
 const CONNECTION_ATTEMPTS_MAX = 3
-const CONNECTION_ATTEMPS_DELAY_MS = 200
+const CONNECTION_ATTEMPS_DELAY_MS = 100
 
 const ECHO_CLIENT_BUFFER_SIZE = 512
+
+
 const ECHO_CLIENT_MESSAGE_AMOUNT = 3
 const ECHO_CLIENT_MESSAGE_DELAY_MS = 1000
 
@@ -19,6 +24,8 @@ type ClientConfig struct {
 	ServerHost string
 	ServerPort string
 	AgencyId   string
+	InputFile string
+	OutputFile string
 }
 
 type Client struct {
@@ -58,35 +65,60 @@ func connectToServer(host, port string) (net.Conn, error) {
 	return conn, err
 }
 
+
 func (client *Client) Run() error {
-	const mainAction = "test-echo-server"
 	defer client.conn.Close()
 
-	for messageId := range ECHO_CLIENT_MESSAGE_AMOUNT {
-		messageArgs := []any{"agency-id", client.config.AgencyId, "message-id", messageId}
-		logger.Info(mainAction, logger.InProgress, messageArgs...)
+	inFile, err := os.Open(client.config.InputFile)
+	if err != nil {
+		logger.Error("open-input-file", logger.Fail, "file", client.config.InputFile, "err", err)
+		return err
+	}
+	defer inFile.Close()
 
-		clientMessage := client.config.AgencyId
+	outFile, err := os.Create(client.config.OutputFile)
+	if err != nil {
+		logger.Error("create-output-file", logger.Fail, "file", client.config.OutputFile, "err", err)
+		return err
+	}
+	defer outFile.Close()
 
-		if err := safe_socket.SendAll(client.conn, []byte(clientMessage)); err != nil {
-			logger.Error("send-message", logger.Fail, messageArgs...)
+	outWriter := bufio.NewWriter(outFile)
+	defer outWriter.Flush()
+
+	scanner := bufio.NewScanner(inFile)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if line == "" {
+			continue
+		}
+
+		if err := safe_socket.SendAll(client.conn, []byte(line)); err != nil {
+			logger.Error("send-bet", logger.Fail, "agency-id", client.config.AgencyId, "err", err)
 			return err
 		}
 
 		responseBuffer, err := safe_socket.RecvAll(client.conn, ECHO_CLIENT_BUFFER_SIZE)
 		if err != nil {
-			logger.Error("recv-response", logger.Fail, messageArgs...)
+			logger.Error("recv-response", logger.Fail, "agency-id", client.config.AgencyId, "err", err)
 			return err
 		}
 
-		if string(responseBuffer) != clientMessage {
-			logger.Error("check-response", logger.Fail, messageArgs...)
+		if _, err := outWriter.Write(responseBuffer); err != nil {
+			logger.Error("write-output-file", logger.Fail, "err", err)
 			return err
 		}
-
-		time.Sleep(ECHO_CLIENT_MESSAGE_DELAY_MS * time.Millisecond)
+		if _, err := outWriter.WriteString("\r\n"); err != nil {
+		    logger.Error("write-output-file", logger.Fail, "err", err)
+		    return err
+		}
 	}
-	logger.Info(mainAction, logger.Success, "agency-id", client.config.AgencyId)
 
+	if err := scanner.Err(); err != nil {
+		logger.Error("read-input-file", logger.Fail, "err", err)
+		return err
+	}
+
+	logger.Info("process-file", logger.Success, "agency-id", client.config.AgencyId)
 	return nil
 }
