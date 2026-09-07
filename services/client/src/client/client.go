@@ -11,8 +11,8 @@ import (
 	"github.com/7574-sistemas-distribuidos/tp-nivelador/src/safe_socket"
 )
 
-const CONNECTION_ATTEMPTS_MAX = 3
-const CONNECTION_ATTEMPS_DELAY_MS = 100
+const CONNECTION_ATTEMPTS_MAX = 5 // 3
+const CONNECTION_ATTEMPS_DELAY_MS = 500 //100
 
 const ECHO_CLIENT_BUFFER_SIZE = 512
 
@@ -98,7 +98,7 @@ func (client *Client) Run() error {
 			return err
 		}
 
-		responseBuffer, err := safe_socket.RecvAll(client.conn, ECHO_CLIENT_BUFFER_SIZE)
+		responseBuffer, err := safe_socket.RecvAll(client.conn, len(line))
 		if err != nil {
 			logger.Error("recv-response", logger.Fail, "agency-id", client.config.AgencyId, "err", err)
 			return err
@@ -122,3 +122,4 @@ func (client *Client) Run() error {
 	logger.Info("process-file", logger.Success, "agency-id", client.config.AgencyId)
 	return nil
 }
+

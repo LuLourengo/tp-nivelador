@@ -1,13 +1,79 @@
-client_0  | 2026/09/03 01:04:07 INFO action=connect-to-server result=in-progress
-client_0  | 2026/09/03 01:04:07 WARN action=connect-to-server result=fail attempt=0
-client_0  | 2026/09/03 01:04:08 WARN action=connect-to-server result=fail attempt=1
-client_0  | 2026/09/03 01:04:08 WARN action=connect-to-server result=fail attempt=2
-client_1  | 2026/09/03 01:04:07 INFO action=connect-to-server result=in-progress
-client_1  | 2026/09/03 01:04:07 WARN action=connect-to-server result=fail attempt=0
-client_1  | 2026/09/03 01:04:08 WARN action=connect-to-server result=fail attempt=1
-client_1  | 2026/09/03 01:04:08 WARN action=connect-to-server result=fail attempt=2
-client_1  | 2026/09/03 01:04:08 WARN action=connect-to-server result=fail
-client_1  | 2026/09/03 01:04:08 ERROR action=client-new result=fail err="dial tcp 172.18.0.2:5678: connect: connection refused"
-client_0  | 2026/09/03 01:04:08 WARN action=connect-to-server result=fail
-client_0  | 2026/09/03 01:04:08 ERROR action=client-new result=fail err="dial tcp 172.18.0.2:5678: connect: connection refused"
-server    | 2026/09/03 01:04:08 INFO action=accept-connection result=in-progress 
+client_3  | 2026/09/07 01:49:13 INFO action=connect-to-server result=in-progress
+client_3  | 2026/09/07 01:49:13 WARN action=connect-to-server result=fail attempt=0
+client_3  | 2026/09/07 01:49:13 WARN action=connect-to-server result=fail attempt=1
+client_3  | 2026/09/07 01:49:13 WARN action=connect-to-server result=fail attempt=2
+client_3  | 2026/09/07 01:49:13 WARN action=connect-to-server result=fail
+client_3  | 2026/09/07 01:49:13 ERROR action=client-new result=fail err="dial tcp 172.18.0.2:5678: connect: connection refused"
+client_3  | 2026/09/07 01:50:09 INFO action=connect-to-server result=in-progress
+client_3  | 2026/09/07 01:50:09 WARN action=connect-to-server result=fail attempt=0
+client_3  | 2026/09/07 01:50:09 INFO action=connect-to-server result=success
+client_3  | 2026/09/07 01:50:10 INFO action=process-file result=success agency-id=3
+client_0  | 2026/09/07 01:49:14 INFO action=connect-to-server result=in-progress
+client_0  | 2026/09/07 01:49:14 WARN action=connect-to-server result=fail attempt=0
+client_0  | 2026/09/07 01:49:14 WARN action=connect-to-server result=fail attempt=1
+client_0  | 2026/09/07 01:49:14 WARN action=connect-to-server result=fail attempt=2
+client_0  | 2026/09/07 01:49:14 WARN action=connect-to-server result=fail
+client_0  | 2026/09/07 01:49:14 ERROR action=client-new result=fail err="dial tcp 172.18.0.2:5678: connect: connection refused"
+client_0  | 2026/09/07 01:50:09 INFO action=connect-to-server result=in-progress
+client_0  | 2026/09/07 01:50:09 INFO action=connect-to-server result=success
+client_0  | 2026/09/07 01:50:10 INFO action=process-file result=success agency-id=0
+client_1  | 2026/09/07 01:49:13 INFO action=connect-to-server result=in-progress
+client_1  | 2026/09/07 01:49:13 WARN action=connect-to-server result=fail attempt=0
+client_1  | 2026/09/07 01:49:13 WARN action=connect-to-server result=fail attempt=1
+client_1  | 2026/09/07 01:49:13 WARN action=connect-to-server result=fail attempt=2
+client_1  | 2026/09/07 01:49:14 WARN action=connect-to-server result=fail
+client_1  | 2026/09/07 01:49:14 ERROR action=client-new result=fail err="dial tcp 172.18.0.2:5678: connect: connection refused"
+client_1  | 2026/09/07 01:50:09 INFO action=connect-to-server result=in-progress
+client_1  | 2026/09/07 01:50:09 INFO action=connect-to-server result=success
+client_1  | 2026/09/07 01:50:13 INFO action=process-file result=success agency-id=1
+client_4  | 2026/09/07 01:49:13 INFO action=connect-to-server result=in-progress
+client_2  | 2026/09/07 01:49:13 INFO action=connect-to-server result=in-progress
+client_4  | 2026/09/07 01:49:13 WARN action=connect-to-server result=fail attempt=0
+client_4  | 2026/09/07 01:49:14 WARN action=connect-to-server result=fail attempt=1
+client_4  | 2026/09/07 01:49:14 WARN action=connect-to-server result=fail attempt=2
+client_4  | 2026/09/07 01:49:14 WARN action=connect-to-server result=fail
+client_4  | 2026/09/07 01:49:14 ERROR action=client-new result=fail err="dial tcp 172.18.0.2:5678: connect: connection refused"
+server    | 2026/09/07 01:50:09 INFO action=accept-connection result=in-progress 
+server    | 2026/09/07 01:50:09 INFO action=accept-connection result=success 
+server    | 2026/09/07 01:50:09 INFO action=handle-client result=in-progress 
+server    | 2026/09/07 01:50:10 INFO action=handle-client result=success messages-amount=16014
+server    | 2026/09/07 01:50:10 INFO action=accept-connection result=in-progress 
+server    | 2026/09/07 01:50:10 INFO action=accept-connection result=success 
+server    | 2026/09/07 01:50:10 INFO action=handle-client result=in-progress 
+server    | 2026/09/07 01:50:10 INFO action=handle-client result=success messages-amount=991
+server    | 2026/09/07 01:50:10 INFO action=accept-connection result=in-progress 
+server    | 2026/09/07 01:50:10 INFO action=accept-connection result=success 
+server    | 2026/09/07 01:50:10 INFO action=handle-client result=in-progress 
+server    | 2026/09/07 01:50:10 INFO action=handle-client result=success messages-amount=5
+server    | 2026/09/07 01:50:10 INFO action=accept-connection result=in-progress 
+server    | 2026/09/07 01:50:10 INFO action=accept-connection result=success 
+client_5  | 2026/09/07 01:49:13 INFO action=connect-to-server result=in-progress
+client_4  | 2026/09/07 01:50:09 INFO action=connect-to-server result=in-progress
+client_4  | 2026/09/07 01:50:09 INFO action=connect-to-server result=success
+client_4  | 2026/09/07 01:50:11 INFO action=process-file result=success agency-id=4
+client_2  | 2026/09/07 01:49:13 WARN action=connect-to-server result=fail attempt=0
+client_2  | 2026/09/07 01:49:14 WARN action=connect-to-server result=fail attempt=1
+client_2  | 2026/09/07 01:49:14 WARN action=connect-to-server result=fail attempt=2
+client_2  | 2026/09/07 01:49:14 WARN action=connect-to-server result=fail
+client_2  | 2026/09/07 01:49:14 ERROR action=client-new result=fail err="dial tcp 172.18.0.2:5678: connect: connection refused"
+client_2  | 2026/09/07 01:50:08 INFO action=connect-to-server result=in-progress
+client_2  | 2026/09/07 01:50:08 WARN action=connect-to-server result=fail attempt=0
+client_2  | 2026/09/07 01:50:08 WARN action=connect-to-server result=fail attempt=1
+client_2  | 2026/09/07 01:50:09 WARN action=connect-to-server result=fail attempt=2
+client_2  | 2026/09/07 01:50:09 WARN action=connect-to-server result=fail
+client_2  | 2026/09/07 01:50:09 ERROR action=client-new result=fail err="dial tcp 172.18.0.2:5678: connect: connection refused"
+server    | 2026/09/07 01:50:10 INFO action=handle-client result=in-progress 
+server    | 2026/09/07 01:50:11 INFO action=handle-client result=success messages-amount=9238
+server    | 2026/09/07 01:50:11 INFO action=accept-connection result=in-progress 
+server    | 2026/09/07 01:50:11 INFO action=accept-connection result=success 
+server    | 2026/09/07 01:50:11 INFO action=handle-client result=in-progress 
+server    | 2026/09/07 01:50:13 INFO action=handle-client result=success messages-amount=26936
+client_5  | 2026/09/07 01:49:13 WARN action=connect-to-server result=fail attempt=0
+client_5  | 2026/09/07 01:49:13 WARN action=connect-to-server result=fail attempt=1
+client_5  | 2026/09/07 01:49:13 WARN action=connect-to-server result=fail attempt=2
+client_5  | 2026/09/07 01:49:13 WARN action=connect-to-server result=fail
+client_5  | 2026/09/07 01:49:13 ERROR action=client-new result=fail err="dial tcp 172.18.0.2:5678: connect: connection refused"
+client_5  | 2026/09/07 01:50:09 INFO action=connect-to-server result=in-progress
+server    | 2026/09/07 01:50:13 INFO action=accept-connection result=in-progress 
+client_5  | 2026/09/07 01:50:09 INFO action=connect-to-server result=success
+client_5  | 2026/09/07 01:50:10 INFO action=process-file result=success agency-id=5

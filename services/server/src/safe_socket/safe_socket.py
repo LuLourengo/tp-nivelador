@@ -1,11 +1,19 @@
 import socket
 
-# TODO: Complete with a short-read/short-write tolerant implementation
+
+def send_all(sock, data):
+    total_sent = 0
+    total_to_send = len(data)
+
+    while total_sent < total_to_send:
+        bytes_sent = sock.send(data[total_sent:])
+        if bytes_sent == 0:
+            raise BrokenPipeError("0 bytes sent: socket disconnected")
+        total_sent += bytes_sent
 
 
-def recv_all(socket: socket.socket, size):
-    return socket.recv(size)
-
-
-def send_all(socket: socket.socket, bytes):
-    return socket.send(bytes)
+def recv_all(sock, size):
+    chunk = sock.recv(size)
+    if not chunk:
+        return b""
+    return chunk
