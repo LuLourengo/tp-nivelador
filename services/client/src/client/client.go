@@ -1,30 +1,31 @@
 package client
 
 import (
-	"net"
-	"time"
-
 	"bufio"
+	"encoding/binary"
+	"errors"
+	"net"
 	"os"
+	"time"
 
 	"github.com/7574-sistemas-distribuidos/tp-nivelador/src/logger"
 	"github.com/7574-sistemas-distribuidos/tp-nivelador/src/safe_socket"
 )
 
-const CONNECTION_ATTEMPTS_MAX = 5 // 3
+const (
+	MsgBet     byte = 1
+	MsgEnd     byte = 2
+	MsgWinners byte = 3
+)
+
+const CONNECTION_ATTEMPTS_MAX = 60//5
 const CONNECTION_ATTEMPS_DELAY_MS = 500 //100
-
-const ECHO_CLIENT_BUFFER_SIZE = 512
-
-
-const ECHO_CLIENT_MESSAGE_AMOUNT = 3
-const ECHO_CLIENT_MESSAGE_DELAY_MS = 1000
 
 type ClientConfig struct {
 	ServerHost string
 	ServerPort string
 	AgencyId   string
-	InputFile string
+	InputFile  string
 	OutputFile string
 }
 
@@ -34,14 +35,83 @@ type Client struct {
 }
 
 func NewClient(config ClientConfig) (*Client, error) {
-	conn, err := connectToServer(config.ServerHost, config.ServerPort)
+	
+	return &Client{config: config}, nil
+}
+
+func (client *Client) Run() error {
+	conn, err := connectToServer(client.config.ServerHost, client.config.ServerPort)
 	if err != nil {
-		logger.Warn("connect-to-server", logger.Fail)
-		return nil, err
+		logger.Error("connect-to-server", logger.Fail, "err", err)
+		return err
+	}
+	client.conn = conn
+	defer client.conn.Close()
+
+	inFile, err := os.Open(client.config.InputFile)
+	if err != nil {
+		logger.Error("open-input-file", logger.Fail, "file", client.config.InputFile, "err", err)
+		return err
+	}
+	defer inFile.Close()
+
+	scanner := bufio.NewScanner(inFile)
+	for scanner.Scan() {
+		line := scanner.Text()
+		if line == "" {
+			continue
+		}
+
+		betWithAgency := client.config.AgencyId + "," + line
+		if err := sendMsg(client.conn, MsgBet, []byte(betWithAgency)); err != nil {
+			logger.Error("send-bet", logger.Fail, "agency-id", client.config.AgencyId, "err", err)
+			return err
+		}
 	}
 
-	client := &Client{conn: conn, config: config}
-	return client, nil
+	if err := scanner.Err(); err != nil {
+		logger.Error("read-input-file", logger.Fail, "err", err)
+		return err
+	}
+
+	if err := sendMsg(client.conn, MsgEnd, nil); err != nil {
+		logger.Error("send-end", logger.Fail, "agency-id", client.config.AgencyId, "err", err)
+		return err
+	}
+
+	msgType, winnersPayload, err := recvMsg(client.conn)
+	if err != nil {
+		logger.Error("recv-winners", logger.Fail, "agency-id", client.config.AgencyId, "err", err)
+		return err
+	}
+
+	if msgType != MsgWinners {
+		err := errors.New("unexpected message type received from server")
+		logger.Error("recv-winners", logger.Fail, "agency-id", client.config.AgencyId, "err", err)
+		return err
+	}
+
+	outFile, err := os.Create(client.config.OutputFile)
+	if err != nil {
+		logger.Error("create-output-file", logger.Fail, "file", client.config.OutputFile, "err", err)
+		return err
+	}
+	defer outFile.Close()
+
+	if len(winnersPayload) > 0 {
+		outWriter := bufio.NewWriter(outFile)
+		if _, err := outWriter.Write(winnersPayload); err != nil {
+			logger.Error("write-output-file", logger.Fail, "err", err)
+			return err
+		}
+		if err := outWriter.Flush(); err != nil {
+			logger.Error("flush-output-file", logger.Fail, "err", err)
+			return err
+		}
+	}
+
+	logger.Info("process-file", logger.Success, "agency-id", client.config.AgencyId)
+	return nil
 }
 
 func connectToServer(host, port string) (net.Conn, error) {
@@ -65,61 +135,33 @@ func connectToServer(host, port string) (net.Conn, error) {
 	return conn, err
 }
 
+func sendMsg(conn net.Conn, msgType byte, payload []byte) error {
+	header := make([]byte, 5)
+	binary.BigEndian.PutUint32(header[0:4], uint32(len(payload)))
+	header[4] = msgType
 
-func (client *Client) Run() error {
-	defer client.conn.Close()
+	packet := append(header, payload...)
+	return safe_socket.SendAll(conn, packet)
+}
 
-	inFile, err := os.Open(client.config.InputFile)
+func recvMsg(conn net.Conn) (byte, []byte, error) {
+	header, err := safe_socket.RecvAll(conn, 5)
 	if err != nil {
-		logger.Error("open-input-file", logger.Fail, "file", client.config.InputFile, "err", err)
-		return err
+		return 0, nil, err
 	}
-	defer inFile.Close()
 
-	outFile, err := os.Create(client.config.OutputFile)
+	payloadLen := binary.BigEndian.Uint32(header[0:4])
+	msgType := header[4]
+
+	if payloadLen == 0 {
+		return msgType, []byte{}, nil
+	}
+
+	payload, err := safe_socket.RecvAll(conn, int(payloadLen))
 	if err != nil {
-		logger.Error("create-output-file", logger.Fail, "file", client.config.OutputFile, "err", err)
-		return err
-	}
-	defer outFile.Close()
-
-	outWriter := bufio.NewWriter(outFile)
-	defer outWriter.Flush()
-
-	scanner := bufio.NewScanner(inFile)
-	for scanner.Scan() {
-		line := scanner.Text()
-		if line == "" {
-			continue
-		}
-
-		if err := safe_socket.SendAll(client.conn, []byte(line)); err != nil {
-			logger.Error("send-bet", logger.Fail, "agency-id", client.config.AgencyId, "err", err)
-			return err
-		}
-
-		responseBuffer, err := safe_socket.RecvAll(client.conn, len(line))
-		if err != nil {
-			logger.Error("recv-response", logger.Fail, "agency-id", client.config.AgencyId, "err", err)
-			return err
-		}
-
-		if _, err := outWriter.Write(responseBuffer); err != nil {
-			logger.Error("write-output-file", logger.Fail, "err", err)
-			return err
-		}
-		if _, err := outWriter.WriteString("\r\n"); err != nil {
-		    logger.Error("write-output-file", logger.Fail, "err", err)
-		    return err
-		}
+		return 0, nil, err
 	}
 
-	if err := scanner.Err(); err != nil {
-		logger.Error("read-input-file", logger.Fail, "err", err)
-		return err
-	}
-
-	logger.Info("process-file", logger.Success, "agency-id", client.config.AgencyId)
-	return nil
+	return msgType, payload, nil
 }
 

@@ -13,7 +13,14 @@ def send_all(sock, data):
 
 
 def recv_all(sock, size):
-    chunk = sock.recv(size)
-    if not chunk:
-        return b""
-    return chunk
+    chunks = []
+    bytes_recd = 0
+
+    while bytes_recd < size:
+        chunk = sock.recv(size - bytes_recd)
+        if not chunk:
+            return None
+        chunks.append(chunk)
+        bytes_recd += len(chunk)
+
+    return b"".join(chunks)
