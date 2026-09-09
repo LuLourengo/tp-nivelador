@@ -1,5 +1,7 @@
+import os
 import socket
 import struct
+import threading
 import logger
 import safe_socket
 from lottery.lottery import Lottery
@@ -26,14 +28,29 @@ class Server:
         self.storage_path = STORAGE_PATH
         self.lottery = Lottery(self.storage_path)
 
+        
+        quorum_env = os.getenv("AGENCY_QUORUM_MIN", "5")
+        try:
+            self.quorum_min = int(quorum_env)
+        except ValueError:
+            self.quorum_min = 5
+
+        
+        self.storage_lock = threading.Lock()
+        self.quorum_cond = threading.Condition()
+        self.finished_agencies = set()
+
     def run(self):
         logger.info("server-start", logger.LogResult.success)
         try:
             while True:
-                logger.info("accept-connection", logger.LogResult.in_progress)
                 client_socket, _ = self._server_socket.accept()
-                logger.info("accept-connection", logger.LogResult.success)
-                self._handle_client(client_socket)
+                client_thread = threading.Thread(
+                    target=self._handle_client,
+                    args=(client_socket,),
+                    daemon=True,
+                )
+                client_thread.start()
         except Exception as e:
             logger.error("server-run", logger.LogResult.fail, "err", str(e))
         finally:
@@ -91,14 +108,41 @@ class Server:
                             )
 
                     if bets_batch:
-                        self.lottery.store_bets(bets_batch)
+                        with self.storage_lock:
+                            self.lottery.store_bets(bets_batch)
 
                     self._send_msg(client_socket, MSG_ACK, b"")
 
                 elif msg_type == MSG_END:
+                    
+                    with self.quorum_cond:
+                        if agency_id is not None:
+                            self.finished_agencies.add(agency_id)
+
+                        logger.info(
+                            "agency-finished",
+                            logger.LogResult.success,
+                            "agency-id",
+                            agency_id,
+                            "ready-agencies",
+                            len(self.finished_agencies),
+                            "quorum-min",
+                            self.quorum_min,
+                        )
+
+                        if len(self.finished_agencies) >= self.quorum_min:
+                            self.quorum_cond.notify_all()
+                        else:
+                            while len(self.finished_agencies) < self.quorum_min:
+                                self.quorum_cond.wait()
+
+                   
                     winners_lines = []
                     if agency_id is not None:
-                        for b in self.lottery.load_bets():
+                        with self.storage_lock:
+                            all_bets = self.lottery.load_bets()
+
+                        for b in all_bets:
                             if b.agency_id == agency_id and self.lottery.has_won(b):
                                 winners_lines.append(
                                     f"{b.first_name},{b.last_name},{b.document},{b.birthdate},{b.number}"
