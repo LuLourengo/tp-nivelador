@@ -6,6 +6,7 @@ import (
 	"errors"
 	"net"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/7574-sistemas-distribuidos/tp-nivelador/src/logger"
@@ -16,10 +17,11 @@ const (
 	MsgBet     byte = 1
 	MsgEnd     byte = 2
 	MsgWinners byte = 3
+	MsgAck     byte = 4
 )
 
-const CONNECTION_ATTEMPTS_MAX = 60//5
-const CONNECTION_ATTEMPS_DELAY_MS = 500 //100
+const CONNECTION_ATTEMPTS_MAX = 60
+const CONNECTION_ATTEMPS_DELAY_MS = 500
 
 type ClientConfig struct {
 	ServerHost string
@@ -27,6 +29,7 @@ type ClientConfig struct {
 	AgencyId   string
 	InputFile  string
 	OutputFile string
+	BatchSize  int
 }
 
 type Client struct {
@@ -35,7 +38,9 @@ type Client struct {
 }
 
 func NewClient(config ClientConfig) (*Client, error) {
-	
+	if config.BatchSize <= 0 {
+		config.BatchSize = 10
+	}
 	return &Client{config: config}, nil
 }
 
@@ -56,22 +61,34 @@ func (client *Client) Run() error {
 	defer inFile.Close()
 
 	scanner := bufio.NewScanner(inFile)
+	batch := make([]string, 0, client.config.BatchSize)
+
 	for scanner.Scan() {
-		line := scanner.Text()
+		line := strings.TrimSpace(scanner.Text())
 		if line == "" {
 			continue
 		}
 
 		betWithAgency := client.config.AgencyId + "," + line
-		if err := sendMsg(client.conn, MsgBet, []byte(betWithAgency)); err != nil {
-			logger.Error("send-bet", logger.Fail, "agency-id", client.config.AgencyId, "err", err)
-			return err
+		batch = append(batch, betWithAgency)
+
+		if len(batch) >= client.config.BatchSize {
+			if err := client.sendBatch(batch); err != nil {
+				return err
+			}
+			batch = batch[:0]
 		}
 	}
 
 	if err := scanner.Err(); err != nil {
 		logger.Error("read-input-file", logger.Fail, "err", err)
 		return err
+	}
+
+	if len(batch) > 0 {
+		if err := client.sendBatch(batch); err != nil {
+			return err
+		}
 	}
 
 	if err := sendMsg(client.conn, MsgEnd, nil); err != nil {
@@ -111,6 +128,26 @@ func (client *Client) Run() error {
 	}
 
 	logger.Info("process-file", logger.Success, "agency-id", client.config.AgencyId)
+	return nil
+}
+
+func (client *Client) sendBatch(batch []string) error {
+	payload := []byte(strings.Join(batch, "\n"))
+	if err := sendMsg(client.conn, MsgBet, payload); err != nil {
+		logger.Error("send-batch", logger.Fail, "agency-id", client.config.AgencyId, "err", err)
+		return err
+	}
+
+	msgType, _, err := recvMsg(client.conn)
+	if err != nil {
+		logger.Error("recv-batch-ack", logger.Fail, "agency-id", client.config.AgencyId, "err", err)
+		return err
+	}
+	if msgType != MsgAck {
+		err := errors.New("expected ack from server")
+		logger.Error("recv-batch-ack", logger.Fail, "agency-id", client.config.AgencyId, "err", err)
+		return err
+	}
 	return nil
 }
 
@@ -164,4 +201,3 @@ func recvMsg(conn net.Conn) (byte, []byte, error) {
 
 	return msgType, payload, nil
 }
-

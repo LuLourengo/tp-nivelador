@@ -8,6 +8,7 @@ from lottery.bet import Bet
 MSG_BET = 1
 MSG_END = 2
 MSG_WINNERS = 3
+MSG_ACK = 4
 
 STORAGE_PATH = "bets.csv"
 
@@ -20,7 +21,6 @@ class Server:
         self._server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self._server_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self._server_socket.bind((self.server_host, self.server_port))
-        # Backlog suficiente para encolar los intentos de conexión secuenciales
         self._server_socket.listen(128)
 
         self.storage_path = STORAGE_PATH
@@ -70,21 +70,30 @@ class Server:
                     break
 
                 if msg_type == MSG_BET:
-                    line = payload.decode("utf-8").strip()
-                    if not line:
-                        continue
-                    parts = line.split(",")
-                    if len(parts) >= 6:
-                        agency_id = int(parts[0])
-                        bet = Bet(
-                            agency_id=agency_id,
-                            first_name=parts[1],
-                            last_name=parts[2],
-                            document=int(parts[3]),
-                            birthdate=parts[4],
-                            number=int(parts[5]),
-                        )
-                        self.lottery.store_bets([bet])
+                    lines = payload.decode("utf-8").strip().split("\n")
+                    bets_batch = []
+                    for line in lines:
+                        line = line.strip()
+                        if not line:
+                            continue
+                        parts = line.split(",")
+                        if len(parts) >= 6:
+                            agency_id = int(parts[0])
+                            bets_batch.append(
+                                Bet(
+                                    agency_id=agency_id,
+                                    first_name=parts[1],
+                                    last_name=parts[2],
+                                    document=int(parts[3]),
+                                    birthdate=parts[4],
+                                    number=int(parts[5]),
+                                )
+                            )
+
+                    if bets_batch:
+                        self.lottery.store_bets(bets_batch)
+
+                    self._send_msg(client_socket, MSG_ACK, b"")
 
                 elif msg_type == MSG_END:
                     winners_lines = []
