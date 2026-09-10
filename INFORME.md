@@ -1,5 +1,4 @@
-# Informe Técnico: TP0 - Sistemas Distribuidos
-
+# Informe Técnico: TP0
 
 ## Protocolo de Comunicación
 Para la transferencia de datos entre el cliente y el servidor se diseñé un protocolo binario orientado a mensajes sobre TCP, garantizando un flujo eficiente y sin pérdida de datos. 

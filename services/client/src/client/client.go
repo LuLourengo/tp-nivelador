@@ -249,6 +249,7 @@ func connectToServer(ctx context.Context, host string, port string) (net.Conn, e
 			case <-time.After(CONNECTION_ATTEMPS_DELAY_MS * time.Millisecond):
 			}
 			continue
+			
 		}
 
 		logger.Info(actionDescription, logger.Success)

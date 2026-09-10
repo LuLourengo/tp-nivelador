@@ -51,6 +51,5 @@ func RecvAll(reader io.Reader, amountToRead int) ([]byte, error) {
 			return nil, err
 		}
 	}
-
 	return buffer, nil
 }

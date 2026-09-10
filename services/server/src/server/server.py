@@ -8,6 +8,7 @@ import safe_socket
 from lottery.lottery import Lottery
 from lottery.bet import Bet
 
+
 MSG_BET = 1
 MSG_END = 2
 MSG_WINNERS = 3
