@@ -1,4 +1,5 @@
 import os
+import signal
 import socket
 import struct
 import threading
@@ -28,33 +29,85 @@ class Server:
         self.storage_path = STORAGE_PATH
         self.lottery = Lottery(self.storage_path)
 
-        
         quorum_env = os.getenv("AGENCY_QUORUM_MIN", "5")
         try:
             self.quorum_min = int(quorum_env)
         except ValueError:
             self.quorum_min = 5
 
-        
         self.storage_lock = threading.Lock()
         self.quorum_cond = threading.Condition()
         self.finished_agencies = set()
 
+        self.is_running = True
+        self.client_threads = []
+        self.active_client_sockets = set()
+        self.sockets_lock = threading.Lock()
+
+        signal.signal(signal.SIGTERM, self._handle_signal)
+        signal.signal(signal.SIGINT, self._handle_signal)
+
+    def _handle_signal(self, signum, frame):
+        logger.info("signal-received", logger.LogResult.success, "signal", signum)
+        self.shutdown()
+
+    def shutdown(self):
+        if not self.is_running:
+            return
+        self.is_running = False
+
+        try:
+            self._server_socket.close()
+        except Exception:
+            pass
+
+        with self.quorum_cond:
+            self.quorum_cond.notify_all()
+
+        with self.sockets_lock:
+            for sock in list(self.active_client_sockets):
+                try:
+                    sock.shutdown(socket.SHUT_RDWR)
+                except Exception:
+                    pass
+                try:
+                    sock.close()
+                except Exception:
+                    pass
+            self.active_client_sockets.clear()
+
     def run(self):
         logger.info("server-start", logger.LogResult.success)
         try:
-            while True:
-                client_socket, _ = self._server_socket.accept()
+            while self.is_running:
+                try:
+                    client_socket, _ = self._server_socket.accept()
+                except OSError:
+                    break
+
+                if not self.is_running:
+                    client_socket.close()
+                    break
+
+                with self.sockets_lock:
+                    self.active_client_sockets.add(client_socket)
+
                 client_thread = threading.Thread(
                     target=self._handle_client,
                     args=(client_socket,),
-                    daemon=True,
                 )
+                self.client_threads.append(client_thread)
                 client_thread.start()
+
         except Exception as e:
-            logger.error("server-run", logger.LogResult.fail, "err", str(e))
+            if self.is_running:
+                logger.error("server-run", logger.LogResult.fail, "err", str(e))
         finally:
-            self._server_socket.close()
+            self.shutdown()
+
+            for thread in self.client_threads:
+                thread.join(timeout=2.0)
+            logger.info("server-shutdown", logger.LogResult.success)
 
     def _recv_msg(self, sock):
         header = safe_socket.recv_all(sock, 5)
@@ -81,7 +134,7 @@ class Server:
         agency_id = None
 
         try:
-            while True:
+            while self.is_running:
                 msg_type, payload = self._recv_msg(client_socket)
                 if msg_type is None:
                     break
@@ -114,7 +167,6 @@ class Server:
                     self._send_msg(client_socket, MSG_ACK, b"")
 
                 elif msg_type == MSG_END:
-                    
                     with self.quorum_cond:
                         if agency_id is not None:
                             self.finished_agencies.add(agency_id)
@@ -133,10 +185,12 @@ class Server:
                         if len(self.finished_agencies) >= self.quorum_min:
                             self.quorum_cond.notify_all()
                         else:
-                            while len(self.finished_agencies) < self.quorum_min:
+                            while self.is_running and len(self.finished_agencies) < self.quorum_min:
                                 self.quorum_cond.wait()
 
-                   
+                    if not self.is_running and len(self.finished_agencies) < self.quorum_min:
+                        break
+
                     winners_lines = []
                     if agency_id is not None:
                         with self.storage_lock:
@@ -163,6 +217,12 @@ class Server:
                     break
 
         except Exception as e:
-            logger.error(action, logger.LogResult.fail, "err", str(e))
+            if self.is_running:
+                logger.error(action, logger.LogResult.fail, "err", str(e))
         finally:
-            client_socket.close()
+            with self.sockets_lock:
+                self.active_client_sockets.discard(client_socket)
+            try:
+                client_socket.close()
+            except Exception:
+                pass

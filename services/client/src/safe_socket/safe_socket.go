@@ -1,40 +1,54 @@
-
 package safe_socket
 
 import (
-	"errors"
 	"io"
 )
 
-func SendAll(socket io.Writer, bytes []byte) error {
-	totalSent := 0
-	totalToSend := len(bytes)
+func SendAll(writer io.Writer, data []byte) error {
+	bytesSent := 0
+	totalDataLength := len(data)
 
-	for totalSent < totalToSend {
-		bytesWritten, err := socket.Write(bytes[totalSent:])
+	for bytesSent < totalDataLength {
+		chunkToSend := data[bytesSent:]
+		
+		writtenCount, err := writer.Write(chunkToSend)
+		
 		if err != nil {
 			return err
 		}
-		if bytesWritten == 0 {
-			return errors.New("0 bytes sent: socket disconnected")
-		}
-		totalSent += bytesWritten
+
+		bytesSent = bytesSent + writtenCount
 	}
 
 	return nil
 }
 
-func RecvAll(socket io.Reader, size int) ([]byte, error) {
-	buffer := make([]byte, size)
-	totalRead := 0
+func RecvAll(reader io.Reader, amountToRead int) ([]byte, error) {
+	if amountToRead == 0 {
+		return []byte{}, nil
+	}
 
-	for totalRead < size {
-		bytesRead, err := socket.Read(buffer[totalRead:])
-		if bytesRead > 0 {
-			totalRead += bytesRead
+	buffer := make([]byte, amountToRead)
+	bytesReadSoFar := 0
+
+	for bytesReadSoFar < amountToRead {
+		sliceToReadInto := buffer[bytesReadSoFar:]
+		
+		readCount, err := reader.Read(sliceToReadInto)
+
+		if readCount > 0 {
+			bytesReadSoFar = bytesReadSoFar + readCount
 		}
+
 		if err != nil {
-			return buffer[:totalRead], err
+			
+			if err == io.EOF {
+				if bytesReadSoFar == amountToRead {
+					return buffer, nil
+				}
+			}
+			
+			return nil, err
 		}
 	}
 
