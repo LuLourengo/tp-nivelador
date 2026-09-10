@@ -5,7 +5,6 @@ import (
 	"errors"
 	"os"
 	"os/signal"
-	"runtime/debug"
 	"strconv"
 	"syscall"
 
@@ -58,9 +57,6 @@ func loadConfig() (client.ClientConfig, error) {
 }
 
 func run() int {
-	// aclarado en el informe
-	debug.SetMemoryLimit(4 * 1024 * 1024) // 4MB
-
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGTERM, syscall.SIGINT)
 	defer stop()
 
